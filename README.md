@@ -29,3 +29,6 @@ python gold_miner_spread.py
 
 The script downloads price data from Yahoo Finance and outputs a plot and summary
 statistics of the backtested strategy.
+
+The annualized return metric now uses a compounding approach based on the
+product of period returns.
