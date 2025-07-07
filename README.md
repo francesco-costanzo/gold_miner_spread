@@ -31,4 +31,6 @@ The script downloads price data from Yahoo Finance and outputs a plot and summar
 statistics of the backtested strategy.
 
 The annualized return metric now uses a compounding approach based on the
-product of period returns.
+product of period returns. The strategy also subtracts transaction costs of
+5 basis points per trade from daily returns to better approximate real-world
+execution.
