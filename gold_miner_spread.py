@@ -76,6 +76,18 @@ def rolling_corr_change(series1, series2, window=15):
     return (corr_change < 0).astype(int)
 
 
+def optimal_corr_window(series1, series2, windows):
+    """Return the window length with the highest mean absolute correlation."""
+    best_window = None
+    best_score = -np.inf
+    for w in windows:
+        corr = series1.rolling(w).corr(series2).abs().mean()
+        if corr > best_score:
+            best_score = corr
+            best_window = w
+    return best_window
+
+
 # 5. Load GDX and GLD data
 gdx = load_data("GDX")
 gld = load_data("GLD")
@@ -83,7 +95,10 @@ gld = load_data("GLD")
 # Rolling correlation change between GLD and GDX returns
 gdx_ret = gdx.pct_change()
 gld_ret = gld.pct_change()
-corr_filter_series = rolling_corr_change(gld_ret, gdx_ret)
+candidate_windows = range(10, 31, 5)
+best_window = optimal_corr_window(gld_ret, gdx_ret, candidate_windows)
+corr_filter_series = rolling_corr_change(gld_ret, gdx_ret, window=best_window)
+print(f"Optimal correlation window: {best_window}")
 
 # 6. Calculate spread using formula provided
 aligned = pd.concat([gld, gdx], axis=1, join='inner')

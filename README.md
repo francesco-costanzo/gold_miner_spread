@@ -34,3 +34,7 @@ The annualized return metric now uses a compounding approach based on the
 product of period returns. The strategy also subtracts transaction costs of
 5 basis points per trade from daily returns to better approximate real-world
 execution.
+
+The correlation filter now automatically selects the best rolling window
+length by testing multiple candidates and choosing the one with the highest
+average absolute correlation between GLD and GDX returns.
