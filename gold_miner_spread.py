@@ -97,10 +97,11 @@ raw_preds = np.mean(np.column_stack(pred_list), axis=1)
 filter_values = corr_filter_series.loc[test_targets.index].fillna(0).values
 
 # 10. Backtest Strategy
-returns = test_targets.diff().dropna().values
+returns = test_targets.diff().fillna(0).values
 n_preds = len(raw_preds)
 aligned_returns = returns[-n_preds:]
-signals = np.sign(raw_preds[:-1]) * filter_values[:-1]
+signals = np.sign(raw_preds[1:]) * filter_values[1:]
+assert len(signals) == len(aligned_returns[1:]), "signals and returns must be equal length"
 strategy_returns = signals * aligned_returns[1:]
 benchmark_returns = aligned_returns[1:]
 
