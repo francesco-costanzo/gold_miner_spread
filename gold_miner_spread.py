@@ -219,6 +219,7 @@ for i in range(1, len(signals)):
 
 ax.set_title(f"Cumulative Returns (%) | Sharpe Ratio: {sharpe_ratio:.2f}")
 ax.yaxis.set_major_formatter(mtick.PercentFormatter())
+ax.set_xlabel("Trading Days")
 ax.legend()
 ax.grid(True)
 plt.tight_layout()
