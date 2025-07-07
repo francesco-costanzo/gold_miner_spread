@@ -24,14 +24,32 @@ def get_most_recent_trading_day():
 # 2. Load Price Data
 
 
-def load_data(ticker, start='2006-06-01'):
-    """Download price data for a ticker and return a clean series."""
+def load_data(ticker, start="2006-06-01"):
+    """Download price data for a ticker and return a clean price series."""
     end = get_most_recent_trading_day()
-    data = yf.download(ticker, start=start, end=end, progress=False)
-    if "Adj Close" in data.columns:
-        return data["Adj Close"].dropna()
-    elif "Close" in data.columns:
-        return data["Close"].dropna()
+    # Use auto_adjust=False so the old column names (including ``Adj Close``)
+    # are available. yfinance now returns a MultiIndex by default, so handle
+    # that here and extract a Series instead of a DataFrame.
+    data = yf.download(
+        ticker,
+        start=start,
+        end=end,
+        progress=False,
+        auto_adjust=False,
+    )
+
+    if isinstance(data.columns, pd.MultiIndex):
+        # Prefer adjusted close prices if present
+        if ("Adj Close", ticker) in data.columns:
+            return data[("Adj Close", ticker)].dropna()
+        if ("Close", ticker) in data.columns:
+            return data[("Close", ticker)].dropna()
+    else:
+        if "Adj Close" in data.columns:
+            return data["Adj Close"].dropna()
+        if "Close" in data.columns:
+            return data["Close"].dropna()
+
     raise ValueError(f"'Adj Close' and 'Close' not found for {ticker}")
 
 # 3. Create Lag Matrix
