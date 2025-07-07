@@ -38,20 +38,21 @@ def lag_matrix(series, lags=10):
     df.dropna(inplace=True)
     return df
 
-# 4. Rolling Correlation Filter
-def correlation_filter(preds, actuals, window=50):
-    filtered = []
-    for t in range(window, len(preds)):
-        past_preds = preds[t-window:t]
-        past_actuals = actuals[t-window:t]
-        corr = np.corrcoef(past_preds, past_actuals)[0, 1]
-        filtered_val = corr * preds[t]
-        filtered.append(filtered_val)
-    return np.array(filtered)
+# 4. Rolling Correlation Change Filter
+def rolling_corr_change(series1, series2, window=15):
+    """Return 1 when rolling correlation decreases, otherwise 0."""
+    corr = series1.rolling(window).corr(series2)
+    corr_change = corr.diff()
+    return (corr_change < 0).astype(int)
 
 # 5. Load GDX and GLD data
 gdx = load_data("GDX")
 gld = load_data("GLD")
+
+# Rolling correlation change between GLD and GDX returns
+gdx_ret = gdx.pct_change()
+gld_ret = gld.pct_change()
+corr_filter_series = rolling_corr_change(gld_ret, gdx_ret)
 
 # 6. Calculate spread using formula provided
 aligned = pd.concat([gld, gdx], axis=1, join='inner')
@@ -85,22 +86,43 @@ model = PySRRegressor(
 
 model.fit(train_features.values, train_targets.values)
 
-# 9. Predict and Apply Correlation Filter
-raw_preds = model.predict(test_features.values)
-filtered_preds = correlation_filter(raw_preds, test_targets.values)
+# 9. Predict using the 10 best models and apply correlation change filter
+top_equations = model.equations_.sort_values("loss").head(10)
+pred_list = []
+for idx in top_equations.index:
+    pred_list.append(model.predict(test_features.values, model=idx))
+raw_preds = np.mean(np.column_stack(pred_list), axis=1)
+
+# Align correlation filter to prediction index
+filter_values = corr_filter_series.loc[test_targets.index].fillna(0).values
 
 # 10. Backtest Strategy
 returns = test_targets.diff().dropna().values
-n_preds = len(filtered_preds)
+n_preds = len(raw_preds)
 aligned_returns = returns[-n_preds:]
-signals = np.sign(filtered_preds[:-1])
+signals = np.sign(raw_preds[:-1]) * filter_values[:-1]
 strategy_returns = signals * aligned_returns[1:]
 benchmark_returns = aligned_returns[1:]
+
+def annualized_return(returns, periods_per_year=252):
+    cumulative = np.cumsum(returns)
+    total_return = cumulative[-1]
+    n_years = len(returns) / periods_per_year
+    return (1 + total_return) ** (1 / n_years) - 1
+
+def annualized_std(returns, periods_per_year=252):
+    return np.std(returns) * np.sqrt(periods_per_year)
+
+def sharpe_ratio_func(returns, periods_per_year=252):
+    if np.std(returns) == 0:
+        return np.nan
+    return annualized_return(returns, periods_per_year) / annualized_std(returns, periods_per_year)
+
+sharpe_ratio = sharpe_ratio_func(strategy_returns)
 
 # 11. Plot Cumulative Returns in Percent with Background Signal Coloring
 cumulative_strategy = np.cumsum(strategy_returns)
 cumulative_benchmark = np.cumsum(benchmark_returns)
-sharpe_ratio = np.mean(strategy_returns) / np.std(strategy_returns) * np.sqrt(252)
 
 # Plot returns
 fig, ax = plt.subplots(figsize=(12, 6))
@@ -128,11 +150,6 @@ plt.tight_layout()
 
 
 # 12. Output Return Table
-def annualized_return(returns, periods_per_year=252):
-    cumulative = np.cumsum(returns)
-    total_return = cumulative[-1]
-    n_years = len(returns) / periods_per_year
-    return (1 + total_return) ** (1 / n_years) - 1
 
 metrics_df = pd.DataFrame({
     "Cumulative Return (%)": [
@@ -142,6 +159,14 @@ metrics_df = pd.DataFrame({
     "Annualized Return (%)": [
         annualized_return(strategy_returns) * 100,
         annualized_return(benchmark_returns) * 100
+    ],
+    "Annualized Std Dev (%)": [
+        annualized_std(strategy_returns) * 100,
+        annualized_std(benchmark_returns) * 100
+    ],
+    "Sharpe Ratio": [
+        sharpe_ratio_func(strategy_returns),
+        sharpe_ratio_func(benchmark_returns)
     ]
 }, index=["Strategy", "Buy & Hold"])
 
