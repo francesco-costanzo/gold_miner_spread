@@ -141,6 +141,12 @@ assert len(signals) == len(aligned_returns[1:]), (
     "signals and returns must be equal length"
 )
 strategy_returns = signals * aligned_returns[1:]
+
+# Transaction costs (5 bps per buy/sell)
+tc_rate = 0.0005
+trade_costs = tc_rate * np.abs(np.diff(np.insert(signals, 0, 0)))
+strategy_returns -= trade_costs
+
 benchmark_returns = aligned_returns[1:]
 
 
@@ -165,6 +171,7 @@ def sharpe_ratio_func(returns, periods_per_year=252):
     )
 
 
+# Evaluate performance after transaction costs
 sharpe_ratio = sharpe_ratio_func(strategy_returns)
 
 # 11. Plot Cumulative Returns in Percent with Background Signal Coloring
