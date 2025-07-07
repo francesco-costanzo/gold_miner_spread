@@ -127,7 +127,6 @@ model = PySRRegressor(
     loss="L2DistLoss()",
     maxsize=6,
     tournament_selection_n=20,
-    crossover_probability=0.25,
     verbosity=1,
     random_state=42
 )
