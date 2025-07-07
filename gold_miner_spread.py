@@ -90,7 +90,7 @@ model.fit(train_features.values, train_targets.values)
 top_equations = model.equations_.sort_values("loss").head(10)
 pred_list = []
 for idx in top_equations.index:
-    pred_list.append(model.predict(test_features.values, model=idx))
+    pred_list.append(model.predict(test_features.values, index=idx))
 raw_preds = np.mean(np.column_stack(pred_list), axis=1)
 
 # Align correlation filter to prediction index
