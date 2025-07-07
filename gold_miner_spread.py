@@ -107,7 +107,12 @@ for idx in top_equations.index:
 raw_preds = np.mean(np.column_stack(pred_list), axis=1)
 
 # Align correlation filter to prediction index
-filter_values = corr_filter_series.loc[test_targets.index].fillna(0).values
+filter_values = (
+    corr_filter_series.loc[test_targets.index]
+    .fillna(0)
+    .to_numpy()
+    .ravel()
+)
 
 # 10. Backtest Strategy
 returns = test_targets.diff().fillna(0).values
