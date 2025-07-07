@@ -105,8 +105,7 @@ strategy_returns = signals * aligned_returns[1:]
 benchmark_returns = aligned_returns[1:]
 
 def annualized_return(returns, periods_per_year=252):
-    cumulative = np.cumsum(returns)
-    total_return = cumulative[-1]
+    total_return = np.prod(1 + returns) - 1
     n_years = len(returns) / periods_per_year
     return (1 + total_return) ** (1 / n_years) - 1
 
