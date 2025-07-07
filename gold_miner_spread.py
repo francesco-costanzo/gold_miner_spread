@@ -9,26 +9,36 @@ import warnings
 
 warnings.filterwarnings("ignore")
 
+
 # 1. Most Recent Trading Day
+
+
 def get_most_recent_trading_day():
+    """Return last trading day as an ISO date string."""
     today = datetime.today()
     while today.weekday() >= 5:
         today -= timedelta(days=1)
     return today.strftime('%Y-%m-%d')
 
+
 # 2. Load Price Data
+
+
 def load_data(ticker, start='2006-06-01'):
+    """Download price data for a ticker and return a clean series."""
     end = get_most_recent_trading_day()
     data = yf.download(ticker, start=start, end=end, progress=False)
     if "Adj Close" in data.columns:
         return data["Adj Close"].dropna()
     elif "Close" in data.columns:
         return data["Close"].dropna()
-    else:
-        raise ValueError(f"'Adj Close' and 'Close' not found for {ticker}")
+    raise ValueError(f"'Adj Close' and 'Close' not found for {ticker}")
 
 # 3. Create Lag Matrix
+
+
 def lag_matrix(series, lags=10):
+    """Return DataFrame of lagged values for a series."""
     lagged_data = []
     for i in range(1, lags + 1):
         lag = series.shift(i)
@@ -39,11 +49,14 @@ def lag_matrix(series, lags=10):
     return df
 
 # 4. Rolling Correlation Change Filter
+
+
 def rolling_corr_change(series1, series2, window=15):
-    """Return 1 when rolling correlation decreases, otherwise 0."""
+    """Return 1 when correlation decreases, otherwise 0."""
     corr = series1.rolling(window).corr(series2)
     corr_change = corr.diff()
     return (corr_change < 0).astype(int)
+
 
 # 5. Load GDX and GLD data
 gdx = load_data("GDX")
@@ -101,22 +114,33 @@ returns = test_targets.diff().fillna(0).values
 n_preds = len(raw_preds)
 aligned_returns = returns[-n_preds:]
 signals = np.sign(raw_preds[1:]) * filter_values[1:]
-assert len(signals) == len(aligned_returns[1:]), "signals and returns must be equal length"
+assert len(signals) == len(aligned_returns[1:]), (
+    "signals and returns must be equal length"
+)
 strategy_returns = signals * aligned_returns[1:]
 benchmark_returns = aligned_returns[1:]
 
+
 def annualized_return(returns, periods_per_year=252):
+    """Annualized compounded return from a series of returns."""
     total_return = np.prod(1 + returns) - 1
     n_years = len(returns) / periods_per_year
     return (1 + total_return) ** (1 / n_years) - 1
 
+
 def annualized_std(returns, periods_per_year=252):
+    """Annualized standard deviation of returns."""
     return np.std(returns) * np.sqrt(periods_per_year)
 
+
 def sharpe_ratio_func(returns, periods_per_year=252):
+    """Return Sharpe ratio for a series of returns."""
     if np.std(returns) == 0:
         return np.nan
-    return annualized_return(returns, periods_per_year) / annualized_std(returns, periods_per_year)
+    return annualized_return(returns, periods_per_year) / annualized_std(
+        returns, periods_per_year
+    )
+
 
 sharpe_ratio = sharpe_ratio_func(strategy_returns)
 
@@ -138,7 +162,12 @@ start_idx = 0
 for i in range(1, len(signals)):
     if signals[i] != prev_sig or i == len(signals) - 1:
         end_idx = i
-        ax.axvspan(start_idx, end_idx, color=signal_colors.get(prev_sig, 'white'), alpha=0.3)
+        ax.axvspan(
+            start_idx,
+            end_idx,
+            color=signal_colors.get(prev_sig, 'white'),
+            alpha=0.3,
+        )
         start_idx = i
         prev_sig = signals[i]
 
