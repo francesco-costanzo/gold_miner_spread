@@ -119,13 +119,15 @@ test_targets = test_series[test_features.index]
 
 # 8. Symbolic Regressor
 model = PySRRegressor(
-    niterations=100,
+    niterations=10000,
     binary_operators=["+", "-", "*", "/"],
     unary_operators=["sin", "cos", "exp", "log"],
     population_size=1000,
     model_selection="best",
     loss="L2DistLoss()",
-    maxsize=20,
+    maxsize=6,
+    tournament_selection_n=20,
+    crossover_probability=0.25,
     verbosity=1,
     random_state=42
 )
