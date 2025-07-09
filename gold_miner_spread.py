@@ -95,7 +95,7 @@ gld = load_data("GLD")
 # Rolling correlation change between GLD and GDX returns
 gdx_ret = gdx.pct_change()
 gld_ret = gld.pct_change()
-candidate_windows = range(10, 31, 5)
+candidate_windows = range(5, 40)
 best_window = optimal_corr_window(gld_ret, gdx_ret, candidate_windows)
 corr_filter_series = rolling_corr_change(gld_ret, gdx_ret, window=best_window)
 print(f"Optimal correlation window: {best_window}")
