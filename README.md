@@ -39,6 +39,11 @@ The correlation filter now automatically selects the best rolling window
 length by testing multiple candidates and choosing the one with the highest
 average absolute correlation between GLD and GDX returns.
 
+When the model forecasts the spread direction, the position is only updated if
+the prior day's change in correlation is negative. Otherwise the strategy
+maintains its existing exposure. Transaction costs are only charged when this
+position changes.
+
 The symbolic regressor now uses tournament selection with a tournament size of
 20 and a 75% mutation probability. The search runs for up to 10,000
 iterations with a reduced maximum equation size of 6.

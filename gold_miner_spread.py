@@ -143,6 +143,7 @@ raw_preds = np.mean(np.column_stack(pred_list), axis=1)
 # Align correlation filter to prediction index
 filter_values = (
     corr_filter_series.loc[test_targets.index]
+    .shift(1)
     .fillna(0)
     .to_numpy()
     .ravel()
@@ -152,15 +153,27 @@ filter_values = (
 returns = test_targets.diff().fillna(0).values
 n_preds = len(raw_preds)
 aligned_returns = returns[-n_preds:]
-signals = np.sign(raw_preds[1:]) * filter_values[1:]
+
+# Determine daily position using correlation filter
+pred_sign = np.sign(raw_preds)
+positions = np.zeros_like(pred_sign)
+for i in range(1, n_preds):
+    if filter_values[i] == 1:
+        # Follow model prediction when correlation change is negative
+        positions[i] = pred_sign[i]
+    else:
+        # Otherwise keep previous day's position
+        positions[i] = positions[i - 1]
+
+signals = positions[1:]
 assert len(signals) == len(aligned_returns[1:]), (
     "signals and returns must be equal length"
 )
 strategy_returns = signals * aligned_returns[1:]
 
-# Transaction costs (5 bps per buy/sell)
+# Transaction costs (5 bps per buy/sell) applied only when the position changes
 tc_rate = 0.0005
-trade_costs = tc_rate * np.abs(np.diff(np.insert(signals, 0, 0)))
+trade_costs = tc_rate * np.abs(np.diff(positions))
 strategy_returns -= trade_costs
 
 benchmark_returns = aligned_returns[1:]
