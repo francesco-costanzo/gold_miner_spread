@@ -212,9 +212,9 @@ def sharpe_ratio_func(returns, periods_per_year=252):
 
 def max_drawdown(returns):
     """Return the maximum drawdown of a series of returns."""
-    cumulative = np.cumsum(returns)
+    cumulative = np.cumprod(1 + returns)
     running_max = np.maximum.accumulate(cumulative)
-    drawdowns = running_max - cumulative
+    drawdowns = 1 - cumulative / running_max
     return np.max(drawdowns)
 
 
@@ -230,8 +230,8 @@ def calmar_ratio(returns, periods_per_year=252):
 sharpe_ratio = sharpe_ratio_func(strategy_returns)
 
 # 11. Plot Cumulative Returns in Percent with Background Signal Coloring
-cumulative_strategy = np.cumsum(strategy_returns)
-cumulative_benchmark = np.cumsum(benchmark_returns)
+cumulative_strategy = np.cumprod(1 + strategy_returns) - 1
+cumulative_benchmark = np.cumprod(1 + benchmark_returns) - 1
 
 # Plot returns
 fig, ax = plt.subplots(figsize=(12, 6))
