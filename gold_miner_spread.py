@@ -176,7 +176,11 @@ tc_rate = 0.0005
 trade_costs = tc_rate * np.abs(np.diff(positions))
 strategy_returns -= trade_costs
 
-benchmark_returns = aligned_returns[1:]
+# Buy and hold: open a long position on the spread on day 1 and keep it
+# for the rest of the period. We subtract the transaction cost for the
+# initial trade only.
+benchmark_returns = aligned_returns[1:].copy()
+benchmark_returns[0] -= tc_rate
 
 
 def annualized_return(returns, periods_per_year=252):
