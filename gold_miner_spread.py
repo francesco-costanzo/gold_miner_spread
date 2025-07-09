@@ -200,6 +200,22 @@ def sharpe_ratio_func(returns, periods_per_year=252):
     )
 
 
+def max_drawdown(returns):
+    """Return the maximum drawdown of a series of returns."""
+    cumulative = np.cumsum(returns)
+    running_max = np.maximum.accumulate(cumulative)
+    drawdowns = running_max - cumulative
+    return np.max(drawdowns)
+
+
+def calmar_ratio(returns, periods_per_year=252):
+    """Return the Calmar ratio for a series of returns."""
+    mdd = max_drawdown(returns)
+    if mdd == 0:
+        return np.nan
+    return annualized_return(returns, periods_per_year) / mdd
+
+
 # Evaluate performance after transaction costs
 sharpe_ratio = sharpe_ratio_func(strategy_returns)
 
@@ -249,6 +265,10 @@ metrics_df = pd.DataFrame({
         annualized_return(strategy_returns) * 100,
         annualized_return(benchmark_returns) * 100
     ],
+    "Max Drawdown (%)": [
+        max_drawdown(strategy_returns) * 100,
+        max_drawdown(benchmark_returns) * 100,
+    ],
     "Annualized Std Dev (%)": [
         annualized_std(strategy_returns) * 100,
         annualized_std(benchmark_returns) * 100
@@ -256,6 +276,10 @@ metrics_df = pd.DataFrame({
     "Sharpe Ratio": [
         sharpe_ratio_func(strategy_returns),
         sharpe_ratio_func(benchmark_returns)
+    ],
+    "Calmar Ratio": [
+        calmar_ratio(strategy_returns),
+        calmar_ratio(benchmark_returns),
     ]
 }, index=["Strategy", "Buy & Hold"])
 
