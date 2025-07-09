@@ -176,6 +176,12 @@ tc_rate = 0.0005
 trade_costs = tc_rate * np.abs(np.diff(positions))
 strategy_returns -= trade_costs
 
+# Track the number of transactions executed by the strategy and the
+# benchmark. A position change from long to short counts as two
+# transactions, matching the transaction cost calculation above.
+num_transactions_strategy = int(np.sum(np.abs(np.diff(positions))))
+num_transactions_benchmark = 1
+
 # Buy and hold: open a long position on the spread on day 1 and keep it
 # for the rest of the period. We subtract the transaction cost for the
 # initial trade only.
@@ -284,6 +290,10 @@ metrics_df = pd.DataFrame({
     "Calmar Ratio": [
         calmar_ratio(strategy_returns),
         calmar_ratio(benchmark_returns),
+    ],
+    "Transactions": [
+        num_transactions_strategy,
+        num_transactions_benchmark,
     ]
 }, index=["Strategy", "Buy & Hold"])
 
