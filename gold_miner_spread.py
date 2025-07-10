@@ -5,6 +5,7 @@ import matplotlib.pyplot as plt
 from datetime import datetime, timedelta
 from pysr import PySRRegressor
 import matplotlib.ticker as mtick
+import matplotlib.dates as mdates
 import warnings
 
 warnings.filterwarnings("ignore")
@@ -150,9 +151,9 @@ filter_values = (
 )
 
 # 10. Backtest Strategy
-returns = test_targets.diff().fillna(0).values
+returns_series = test_targets.diff().fillna(0)
 n_preds = len(raw_preds)
-aligned_returns = returns[-n_preds:]
+aligned_returns = returns_series[-n_preds:]
 
 # Determine daily position using correlation filter
 pred_sign = np.sign(raw_preds)
@@ -169,7 +170,7 @@ signals = positions[1:]
 assert len(signals) == len(aligned_returns[1:]), (
     "signals and returns must be equal length"
 )
-strategy_returns = signals * aligned_returns[1:]
+strategy_returns = signals * aligned_returns[1:].to_numpy()
 
 # Transaction costs (5 bps per buy/sell) applied only when the position changes
 tc_rate = 0.0005
@@ -185,7 +186,7 @@ num_transactions_benchmark = 1
 # Buy and hold: open a long position on the spread on day 1 and keep it
 # for the rest of the period. We subtract the transaction cost for the
 # initial trade only.
-benchmark_returns = aligned_returns[1:].copy()
+benchmark_returns = aligned_returns[1:].to_numpy().copy()
 benchmark_returns[0] -= tc_rate
 
 
@@ -233,11 +234,11 @@ sharpe_ratio = sharpe_ratio_func(strategy_returns)
 cumulative_strategy = np.cumprod(1 + strategy_returns) - 1
 cumulative_benchmark = np.cumprod(1 + benchmark_returns) - 1
 
-# Plot returns
+# Plot returns with dates on the x-axis
+dates = aligned_returns.index[1:]
 fig, ax = plt.subplots(figsize=(12, 6))
-x = np.arange(len(cumulative_strategy))
-ax.plot(x, cumulative_strategy * 100, label="Strategy")
-ax.plot(x, cumulative_benchmark * 100, label="Buy & Hold")
+ax.plot(dates, cumulative_strategy * 100, label="Strategy")
+ax.plot(dates, cumulative_benchmark * 100, label="Buy & Hold")
 
 # Background shading based on signal
 signal_colors = {1: 'lightgreen', -1: 'lightcoral', 0: 'white'}
@@ -248,8 +249,8 @@ for i in range(1, len(signals)):
     if signals[i] != prev_sig or i == len(signals) - 1:
         end_idx = i
         ax.axvspan(
-            start_idx,
-            end_idx,
+            dates[start_idx],
+            dates[end_idx],
             color=signal_colors.get(prev_sig, 'white'),
             alpha=0.3,
         )
@@ -258,7 +259,9 @@ for i in range(1, len(signals)):
 
 ax.set_title(f"Cumulative Returns (%) | Sharpe Ratio: {sharpe_ratio:.2f}")
 ax.yaxis.set_major_formatter(mtick.PercentFormatter())
-ax.set_xlabel("Trading Days")
+ax.set_xlabel("Date")
+ax.xaxis.set_major_locator(mdates.AutoDateLocator())
+fig.autofmt_xdate()
 ax.legend()
 ax.grid(True)
 plt.tight_layout()

@@ -28,7 +28,8 @@ python gold_miner_spread.py
 ```
 
 The script downloads price data from Yahoo Finance and outputs a plot and summary
-statistics of the backtested strategy.
+statistics of the backtested strategy. The cumulative returns chart now displays
+dates on the x-axis instead of the number of trading days for easier analysis.
 
 The annualized return metric and all cumulative returns now use a compounding
 approach based on the product of period returns. The strategy also subtracts
