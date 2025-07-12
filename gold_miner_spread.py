@@ -132,9 +132,9 @@ model = PySRRegressor(
     loss="L2DistLoss()",
     maxsize=7,
     tournament_selection_n=20,
-    verbosity=1,
-    random_state=42
+    verbosity=1
 )
+#    random_state=42
 
 model.fit(train_features.values, train_targets.values)
 
