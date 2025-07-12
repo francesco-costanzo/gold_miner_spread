@@ -89,23 +89,27 @@ def optimal_corr_window(series1, series2, windows):
     return best_window
 
 
-# 5. Load GDX and GLD data
+# 5. Load GDX, GLD and SPY data
 gdx = load_data("GDX")
 gld = load_data("GLD")
+spy = load_data("SPY")
+
+# Combine all price series and compute returns
+aligned = pd.concat([gld, gdx, spy], axis=1, join="inner")
+aligned.columns = ["GLD", "GDX", "SPY"]
+returns = aligned.pct_change().dropna()
 
 # Rolling correlation change between GLD and GDX returns
-gdx_ret = gdx.pct_change()
-gld_ret = gld.pct_change()
+gdx_ret = returns["GDX"]
+gld_ret = returns["GLD"]
+spy_ret = returns["SPY"]
 candidate_windows = range(5, 40)
 best_window = optimal_corr_window(gld_ret, gdx_ret, candidate_windows)
 corr_filter_series = rolling_corr_change(gld_ret, gdx_ret, window=best_window)
 print(f"Optimal correlation window: {best_window}")
 
 # 6. Calculate spread using formula provided
-aligned = pd.concat([gld, gdx], axis=1, join='inner')
-aligned.columns = ['GLD', 'GDX']
-spread = aligned['GLD'].pct_change() - aligned['GDX'].pct_change()
-spread = spread.dropna()
+spread = gld_ret - gdx_ret
 
 # 7. Split into Train and Test
 split_point = int(len(spread) * 0.7)
@@ -182,12 +186,18 @@ strategy_returns -= trade_costs
 # transactions, matching the transaction cost calculation above.
 num_transactions_strategy = int(np.sum(np.abs(np.diff(positions))))
 num_transactions_benchmark = 1
+num_transactions_spy_benchmark = 1
 
 # Buy and hold: open a long position on the spread on day 1 and keep it
 # for the rest of the period. We subtract the transaction cost for the
 # initial trade only.
 benchmark_returns = aligned_returns[1:].to_numpy().copy()
 benchmark_returns[0] -= tc_rate
+
+# Buy and hold SPY for the same period
+spy_returns_test = spy_ret.loc[aligned_returns.index]
+spy_benchmark_returns = spy_returns_test[1:].to_numpy().copy()
+spy_benchmark_returns[0] -= tc_rate
 
 
 def annualized_return(returns, periods_per_year=252):
@@ -233,12 +243,14 @@ sharpe_ratio = sharpe_ratio_func(strategy_returns)
 # 11. Plot Cumulative Returns in Percent with Background Signal Coloring
 cumulative_strategy = np.cumprod(1 + strategy_returns) - 1
 cumulative_benchmark = np.cumprod(1 + benchmark_returns) - 1
+cumulative_spy = np.cumprod(1 + spy_benchmark_returns) - 1
 
 # Plot returns with dates on the x-axis
 dates = aligned_returns.index[1:]
 fig, ax = plt.subplots(figsize=(12, 6))
 ax.plot(dates, cumulative_strategy * 100, label="Strategy")
-ax.plot(dates, cumulative_benchmark * 100, label="Buy & Hold")
+ax.plot(dates, cumulative_benchmark * 100, label="Spread Buy & Hold")
+ax.plot(dates, cumulative_spy * 100, label="SPY Buy & Hold")
 
 # Background shading based on signal
 signal_colors = {1: 'lightgreen', -1: 'lightcoral', 0: 'white'}
@@ -272,33 +284,40 @@ plt.tight_layout()
 metrics_df = pd.DataFrame({
     "Cumulative Return (%)": [
         cumulative_strategy[-1] * 100,
-        cumulative_benchmark[-1] * 100
+        cumulative_benchmark[-1] * 100,
+        cumulative_spy[-1] * 100
     ],
     "Annualized Return (%)": [
         annualized_return(strategy_returns) * 100,
-        annualized_return(benchmark_returns) * 100
+        annualized_return(benchmark_returns) * 100,
+        annualized_return(spy_benchmark_returns) * 100
     ],
     "Max Drawdown (%)": [
         max_drawdown(strategy_returns) * 100,
         max_drawdown(benchmark_returns) * 100,
+        max_drawdown(spy_benchmark_returns) * 100,
     ],
     "Annualized Std Dev (%)": [
         annualized_std(strategy_returns) * 100,
-        annualized_std(benchmark_returns) * 100
+        annualized_std(benchmark_returns) * 100,
+        annualized_std(spy_benchmark_returns) * 100
     ],
     "Sharpe Ratio": [
         sharpe_ratio_func(strategy_returns),
-        sharpe_ratio_func(benchmark_returns)
+        sharpe_ratio_func(benchmark_returns),
+        sharpe_ratio_func(spy_benchmark_returns)
     ],
     "Calmar Ratio": [
         calmar_ratio(strategy_returns),
         calmar_ratio(benchmark_returns),
+        calmar_ratio(spy_benchmark_returns),
     ],
     "Transactions": [
         num_transactions_strategy,
         num_transactions_benchmark,
+        num_transactions_spy_benchmark,
     ]
-}, index=["Strategy", "Buy & Hold"])
+}, index=["Strategy", "Spread Buy & Hold", "SPY Buy & Hold"])
 
 # Show table
 print("\nStrategy Performance Summary:")
