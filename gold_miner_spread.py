@@ -188,10 +188,10 @@ num_transactions_strategy = int(np.sum(np.abs(np.diff(positions))))
 num_transactions_benchmark = 1
 num_transactions_spy_benchmark = 1
 
-# Buy and hold: open a long position on the spread on day 1 and keep it
+# Buy and hold: open a short position on the spread on day 1 and keep it
 # for the rest of the period. We subtract the transaction cost for the
 # initial trade only.
-benchmark_returns = aligned_returns[1:].to_numpy().copy()
+benchmark_returns = -aligned_returns[1:].to_numpy().copy()
 benchmark_returns[0] -= tc_rate
 
 # Buy and hold SPY for the same period
