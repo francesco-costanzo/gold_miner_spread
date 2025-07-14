@@ -67,6 +67,47 @@ def lag_matrix(series, lags=10):
     df.dropna(inplace=True)
     return df
 
+# ---------------------------------------------------------------------------
+# Utility functions used throughout the script
+
+def annualized_return(returns, periods_per_year=252):
+    """Annualized compounded return from a series of returns."""
+    total_return = np.prod(1 + returns) - 1
+    n_years = len(returns) / periods_per_year
+    return (1 + total_return) ** (1 / n_years) - 1
+
+
+def annualized_std(returns, periods_per_year=252):
+    """Annualized standard deviation of returns."""
+    return np.std(returns) * np.sqrt(periods_per_year)
+
+
+def sharpe_ratio_func(returns, periods_per_year=252):
+    """Return Sharpe ratio for a series of returns."""
+    if np.std(returns) == 0:
+        return np.nan
+    return annualized_return(returns, periods_per_year) / annualized_std(
+        returns, periods_per_year
+    )
+
+
+def max_drawdown(returns):
+    """Return the maximum drawdown of a series of returns."""
+    cumulative = np.cumprod(1 + returns)
+    running_max = np.maximum.accumulate(cumulative)
+    drawdowns = 1 - cumulative / running_max
+    return np.max(drawdowns)
+
+
+def calmar_ratio(returns, periods_per_year=252):
+    """Return the Calmar ratio for a series of returns."""
+    mdd = max_drawdown(returns)
+    if mdd == 0:
+        return np.nan
+    return annualized_return(returns, periods_per_year) / mdd
+
+# ---------------------------------------------------------------------------
+
 # 4. Rolling Correlation Change Filter
 
 
@@ -77,14 +118,32 @@ def rolling_corr_change(series1, series2, window=15):
     return (corr_change < 0).astype(int)
 
 
-def optimal_corr_window(series1, series2, windows):
-    """Return the window length with the highest mean absolute correlation."""
+def _walk_forward_window_score(series1, series2, window, train_size=252 * 2, test_size=252):
+    """Return average Sharpe ratio from a simple walk-forward test."""
+    spread = series1 - series2
+    corr_change_full = rolling_corr_change(series1, series2, window=window)
+    signals_full = corr_change_full.shift(1).fillna(0)
+    scores = []
+    start = train_size
+    while start + test_size <= len(spread):
+        period_returns = signals_full.iloc[start:start + test_size] * spread.iloc[start:start + test_size]
+        score = sharpe_ratio_func(period_returns.to_numpy())
+        if not np.isnan(score):
+            scores.append(score)
+        start += test_size
+    if not scores:
+        return -np.inf
+    return np.mean(scores)
+
+
+def optimal_corr_window(series1, series2, windows, train_size=252 * 2, test_size=252):
+    """Return the window length with the highest walk-forward Sharpe ratio."""
     best_window = None
     best_score = -np.inf
     for w in windows:
-        corr = series1.rolling(w).corr(series2).abs().mean()
-        if corr > best_score:
-            best_score = corr
+        score = _walk_forward_window_score(series1, series2, w, train_size, test_size)
+        if score > best_score:
+            best_score = score
             best_window = w
     return best_window
 
@@ -202,41 +261,6 @@ spy_benchmark_returns = spy_returns_test[1:].to_numpy().copy()
 spy_benchmark_returns[0] -= tc_rate
 
 
-def annualized_return(returns, periods_per_year=252):
-    """Annualized compounded return from a series of returns."""
-    total_return = np.prod(1 + returns) - 1
-    n_years = len(returns) / periods_per_year
-    return (1 + total_return) ** (1 / n_years) - 1
-
-
-def annualized_std(returns, periods_per_year=252):
-    """Annualized standard deviation of returns."""
-    return np.std(returns) * np.sqrt(periods_per_year)
-
-
-def sharpe_ratio_func(returns, periods_per_year=252):
-    """Return Sharpe ratio for a series of returns."""
-    if np.std(returns) == 0:
-        return np.nan
-    return annualized_return(returns, periods_per_year) / annualized_std(
-        returns, periods_per_year
-    )
-
-
-def max_drawdown(returns):
-    """Return the maximum drawdown of a series of returns."""
-    cumulative = np.cumprod(1 + returns)
-    running_max = np.maximum.accumulate(cumulative)
-    drawdowns = 1 - cumulative / running_max
-    return np.max(drawdowns)
-
-
-def calmar_ratio(returns, periods_per_year=252):
-    """Return the Calmar ratio for a series of returns."""
-    mdd = max_drawdown(returns)
-    if mdd == 0:
-        return np.nan
-    return annualized_return(returns, periods_per_year) / mdd
 
 
 # Evaluate performance after transaction costs

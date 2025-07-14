@@ -37,8 +37,8 @@ transaction costs of 5 basis points per trade from daily returns to better
 approximate real-world execution.
 
 The correlation filter now automatically selects the best rolling window
-length by testing multiple candidates and choosing the one with the highest
-average absolute correlation between GLD and GDX returns.
+length by evaluating several candidates with a walk-forward process and
+choosing the one that delivers the highest out-of-sample Sharpe ratio.
 
 When the model forecasts the spread direction, the position is only updated if
 the prior day's change in correlation is negative. Otherwise the strategy
