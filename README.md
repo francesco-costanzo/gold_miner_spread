@@ -48,3 +48,7 @@ position changes.
 The symbolic regressor now uses tournament selection with a tournament size of
 20 and a 75% mutation probability. The search runs for up to 10,000
 iterations with a reduced maximum equation size of 6.
+
+Before fitting the final model, a simple grid search tests several lag
+lengths and PySR hyperparameters on a validation split. The combination with
+the lowest validation error is then used for training on the full dataset.
