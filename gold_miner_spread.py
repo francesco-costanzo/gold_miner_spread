@@ -116,7 +116,7 @@ split_point = int(len(spread) * 0.7)
 train_series = spread[:split_point]
 test_series = spread[split_point:]
 
-lags = 10
+lags = 8
 train_features = lag_matrix(train_series, lags=lags)
 train_targets = train_series[train_features.index]
 test_features = lag_matrix(test_series, lags=lags)
