@@ -180,8 +180,8 @@ train_series = train_val_series[:val_point]
 val_series = train_val_series[val_point:]
 
 # 8. Hyperparameter Grid Search
-lag_options = [6, 8, 10]
-maxsize_options = [6, 7]
+lag_options = [6, 7, 8, 9, 10]
+maxsize_options = [7, 10, 15, 20, 30]
 popsize_options = [500, 1000]
 
 best_score = np.inf
@@ -196,14 +196,17 @@ for l in lag_options:
         for ps in popsize_options:
             grid_model = PySRRegressor(
                 niterations=100,
-                binary_operators=["+", "-", "*", "/"],
-                unary_operators=["sin", "cos", "exp", "log"],
+                binary_operators=["+", "-", "*", "/", "^"],
+                unary_operators=["sin", "exp", "log"],
                 population_size=ps,
                 model_selection="best",
                 loss="L2DistLoss()",
                 maxsize=ms,
                 tournament_selection_n=20,
                 verbosity=0,
+                turbo = True,
+                parsimony = 0.00001,
+                early_stop_condition = "f(loss, complexity) = (loss < 0.0002) && (complexity < 15)"
             )
             grid_model.fit(train_features.values, train_targets.values)
             preds = grid_model.predict(val_features.values)
