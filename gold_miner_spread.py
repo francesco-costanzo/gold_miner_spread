@@ -204,9 +204,7 @@ for l in lag_options:
                 maxsize=ms,
                 tournament_selection_n=20,
                 verbosity=0,
-                turbo = True,
-                parsimony = 0.00001,
-                early_stop_condition = "f(loss, complexity) = (loss < 0.0002) && (complexity < 15)"
+                turbo = True
             )
             grid_model.fit(train_features.values, train_targets.values)
             preds = grid_model.predict(val_features.values)
@@ -226,14 +224,17 @@ test_targets = test_series[test_features.index]
 # 9. Symbolic Regressor
 model = PySRRegressor(
     niterations=10000,
-    binary_operators=["+", "-", "*", "/"],
-    unary_operators=["sin", "cos", "exp", "log"],
+    binary_operators=["+", "-", "*", "/", "^"],
+    unary_operators=["sin", "exp", "log"],
     population_size=best_params["population_size"],
     model_selection="best",
     loss="L2DistLoss()",
     maxsize=best_params["maxsize"],
     tournament_selection_n=20,
     verbosity=1,
+    turbo=True
+    parsimony=0.00001,
+    early_stop_condition="f(loss, complexity) = (loss < 0.0002) && (complexity < 15)"
 )
 #    random_state=42
 
