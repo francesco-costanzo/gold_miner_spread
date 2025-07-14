@@ -140,10 +140,7 @@ model.fit(train_features.values, train_targets.values)
 
 # 9. Predict using the 10 best models and apply correlation change filter
 top_equations = model.equations_.sort_values("loss").head(10)
-pred_list = []
-for idx in top_equations.index:
-    pred_list.append(model.predict(test_features.values, index=idx))
-raw_preds = np.mean(np.column_stack(pred_list), axis=1)
+raw_preds = model.predict(test_features.values, index=top_equations.index).mean(axis=1)
 
 # Align correlation filter to prediction index
 filter_values = (
