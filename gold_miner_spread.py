@@ -155,7 +155,9 @@ filter_values = (
 )
 
 # 10. Backtest Strategy
-returns_series = test_targets.diff().fillna(0)
+# The spread itself represents the long/short daily return, so no additional
+# differencing is needed here.
+returns_series = test_targets
 n_preds = len(raw_preds)
 aligned_returns = returns_series[-n_preds:]
 
