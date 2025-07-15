@@ -117,33 +117,14 @@ def rolling_corr_change(series1, series2, window=15):
     corr_change = corr.diff()
     return (corr_change < 0).astype(int)
 
-
-def _walk_forward_window_score(series1, series2, window, train_size=252 * 2, test_size=252):
-    """Return average Sharpe ratio from a simple walk-forward test."""
-    spread = series1 - series2
-    corr_change_full = rolling_corr_change(series1, series2, window=window)
-    signals_full = corr_change_full.shift(1).fillna(0)
-    scores = []
-    start = train_size
-    while start + test_size <= len(spread):
-        period_returns = signals_full.iloc[start:start + test_size] * spread.iloc[start:start + test_size]
-        score = sharpe_ratio_func(period_returns.to_numpy())
-        if not np.isnan(score):
-            scores.append(score)
-        start += test_size
-    if not scores:
-        return -np.inf
-    return np.mean(scores)
-
-
-def optimal_corr_window(series1, series2, windows, train_size=252 * 2, test_size=252):
-    """Return the window length with the highest walk-forward Sharpe ratio."""
+def optimal_corr_window(series1, series2, windows):
+    """Return the window length with the highest mean absolute correlation."""
     best_window = None
     best_score = -np.inf
     for w in windows:
-        score = _walk_forward_window_score(series1, series2, w, train_size, test_size)
-        if score > best_score:
-            best_score = score
+        corr = series1.rolling(w).corr(series2).abs().mean()
+        if corr > best_score:
+            best_score = corr
             best_window = w
     return best_window
 
@@ -182,7 +163,7 @@ val_series = train_val_series[val_point:]
 # 8. Hyperparameter Grid Search
 lag_options = [6, 7, 8, 9, 10]
 maxsize_options = [7, 10, 15, 20, 30]
-popsize_options = [500, 1000]
+population_size = 1000
 maxdepth_options = [5, 6, 7, 8]
 
 best_score = np.inf
@@ -194,31 +175,29 @@ for l in lag_options:
     val_features = lag_matrix(val_series, lags=l)
     val_targets = val_series[val_features.index]
     for ms in maxsize_options:
-        for ps in popsize_options:
-            for md in maxdepth_options:
-                grid_model = PySRRegressor(
-                    niterations=100,
-                    binary_operators=["+", "-", "*", "/", "^"],
-                    unary_operators=["sin", "exp", "log"],
-                    population_size=ps,
-                    model_selection="best",
-                    loss="L2DistLoss()",
-                    maxsize=ms,
-                    maxdepth=md,
-                    tournament_selection_n=20,
-                    verbosity=0,
-                )
-                grid_model.fit(train_features.values, train_targets.values)
-                preds = grid_model.predict(val_features.values)
-                mse = np.mean((preds - val_targets.values) ** 2)
-                if mse < best_score:
-                    best_score = mse
-                    best_params = {
-                        "lags": l,
-                        "maxsize": ms,
-                        "population_size": ps,
-                        "maxdepth": md,
-                    }
+        for md in maxdepth_options:
+            grid_model = PySRRegressor(
+                niterations=100,
+                binary_operators=["+", "-", "*", "/", "^"],
+                unary_operators=["sin", "exp", "log"],
+                population_size=population_size,
+                model_selection="best",
+                loss="L2DistLoss()",
+                maxsize=ms,
+                maxdepth=md,
+                tournament_selection_n=20,
+                verbosity=0,
+            )
+            grid_model.fit(train_features.values, train_targets.values)
+            preds = grid_model.predict(val_features.values)
+            mse = np.mean((preds - val_targets.values) ** 2)
+            if mse < best_score:
+                best_score = mse
+                best_params = {
+                    "lags": l,
+                    "maxsize": ms,
+                    "maxdepth": md,
+                }
 
 print(f"Selected params: {best_params}, Validation MSE: {best_score:.4f}")
 
@@ -233,7 +212,7 @@ model = PySRRegressor(
     niterations=10000,
     binary_operators=["+", "-", "*", "/", "^"],
     unary_operators=["sin", "exp", "log"],
-    population_size=best_params["population_size"],
+    population_size=population_size,
     model_selection="best",
     loss="L2DistLoss()",
     maxsize=best_params["maxsize"],
