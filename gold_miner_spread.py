@@ -169,38 +169,54 @@ maxdepth_options = [5, 6, 7, 8]
 best_score = np.inf
 best_params = None
 
-for l in lag_options:
-    train_features = lag_matrix(train_series, lags=l)
-    train_targets = train_series[train_features.index]
-    val_features = lag_matrix(val_series, lags=l)
-    val_targets = val_series[val_features.index]
-    for ms in maxsize_options:
-        for md in maxdepth_options:
-            grid_model = PySRRegressor(
-                niterations=100,
-                binary_operators=["+", "-", "*", "/", "^"],
-                unary_operators=["sin", "exp", "log"],
-                population_size=100,
-                model_selection="best",
-                loss="L2DistLoss()",
-                maxsize=ms,
-                maxdepth=md,
-                tournament_selection_n=20,
-                verbosity=1,
-                turbo=True
-            )
-            grid_model.fit(train_features.values, train_targets.values)
-            preds = grid_model.predict(val_features.values)
-            mse = np.mean((preds - val_targets.values) ** 2)
-            if mse < best_score:
-                best_score = mse
-                best_params = {
-                    "lags": l,
-                    "maxsize": ms,
-                    "maxdepth": md,
-                }
+skip_grid = (
+    len(lag_options) == 1
+    and len(maxsize_options) == 1
+    and len(maxdepth_options) == 1
+)
 
-print(f"Selected params: {best_params}, Validation MSE: {best_score:.4f}")
+if skip_grid:
+    best_params = {
+        "lags": lag_options[0],
+        "maxsize": maxsize_options[0],
+        "maxdepth": maxdepth_options[0],
+    }
+    print("Only one hyperparameter option supplied; skipping grid search.")
+else:
+    for l in lag_options:
+        train_features = lag_matrix(train_series, lags=l)
+        train_targets = train_series[train_features.index]
+        val_features = lag_matrix(val_series, lags=l)
+        val_targets = val_series[val_features.index]
+        for ms in maxsize_options:
+            for md in maxdepth_options:
+                grid_model = PySRRegressor(
+                    niterations=100,
+                    binary_operators=["+", "-", "*", "/", "^"],
+                    unary_operators=["sin", "exp", "log"],
+                    population_size=100,
+                    model_selection="best",
+                    loss="L2DistLoss()",
+                    maxsize=ms,
+                    maxdepth=md,
+                    tournament_selection_n=20,
+                    verbosity=1,
+                    turbo=True
+                )
+                grid_model.fit(train_features.values, train_targets.values)
+                preds = grid_model.predict(val_features.values)
+                mse = np.mean((preds - val_targets.values) ** 2)
+                if mse < best_score:
+                    best_score = mse
+                    best_params = {
+                        "lags": l,
+                        "maxsize": ms,
+                        "maxdepth": md,
+                    }
+
+    print(
+        f"Selected params: {best_params}, Validation MSE: {best_score:.4f}"
+    )
 
 lags = best_params["lags"]
 train_features = lag_matrix(train_val_series, lags=lags)
