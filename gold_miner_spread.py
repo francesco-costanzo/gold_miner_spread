@@ -111,34 +111,82 @@ print(f"Optimal correlation window: {best_window}")
 # 6. Calculate spread using formula provided
 spread = gld_ret - gdx_ret
 
-# 7. Split into Train and Test
+# 7. Split into Train, Validation and Test
 split_point = int(len(spread) * 0.7)
-train_series = spread[:split_point]
+train_val_series = spread[:split_point]
 test_series = spread[split_point:]
 
-lags = 8
-train_features = lag_matrix(train_series, lags=lags)
-train_targets = train_series[train_features.index]
+val_point = int(len(train_val_series) * 0.8)
+train_series = train_val_series[:val_point]
+val_series = train_val_series[val_point:]
+
+# 8. Hyperparameter Grid Search
+lag_options = [6, 8, 10]
+maxsize_options = [6, 7]
+popsize_options = [500, 1000]
+maxdepth_options = [3, 4]
+
+best_score = np.inf
+best_params = None
+
+for l in lag_options:
+    train_features = lag_matrix(train_series, lags=l)
+    train_targets = train_series[train_features.index]
+    val_features = lag_matrix(val_series, lags=l)
+    val_targets = val_series[val_features.index]
+    for ms in maxsize_options:
+        for ps in popsize_options:
+            for md in maxdepth_options:
+                grid_model = PySRRegressor(
+                    niterations=100,
+                    binary_operators=["+", "-", "*", "/"],
+                    unary_operators=["sin", "cos", "exp", "log"],
+                    population_size=ps,
+                    model_selection="best",
+                    loss="L2DistLoss()",
+                    maxsize=ms,
+                    maxdepth=md,
+                    tournament_selection_n=20,
+                    verbosity=0,
+                )
+                grid_model.fit(train_features.values, train_targets.values)
+                preds = grid_model.predict(val_features.values)
+                mse = np.mean((preds - val_targets.values) ** 2)
+                if mse < best_score:
+                    best_score = mse
+                    best_params = {
+                        "lags": l,
+                        "maxsize": ms,
+                        "population_size": ps,
+                        "maxdepth": md,
+                    }
+
+print(f"Selected params: {best_params}, Validation MSE: {best_score:.4f}")
+
+lags = best_params["lags"]
+train_features = lag_matrix(train_val_series, lags=lags)
+train_targets = train_val_series[train_features.index]
 test_features = lag_matrix(test_series, lags=lags)
 test_targets = test_series[test_features.index]
 
-# 8. Symbolic Regressor
+# 9. Symbolic Regressor
 model = PySRRegressor(
     niterations=10000,
     binary_operators=["+", "-", "*", "/"],
     unary_operators=["sin", "cos", "exp", "log"],
-    population_size=1000,
+    population_size=best_params["population_size"],
     model_selection="best",
     loss="L2DistLoss()",
-    maxsize=7,
+    maxsize=best_params["maxsize"],
+    maxdepth=best_params["maxdepth"],
     tournament_selection_n=20,
-    verbosity=1
+    verbosity=1,
 )
 #    random_state=42
 
 model.fit(train_features.values, train_targets.values)
 
-# 9. Predict using the 10 best models and apply correlation change filter
+# 10. Predict using the 10 best models and apply correlation change filter
 top_equations = model.equations_.sort_values("loss").head(10)
 pred_list = []
 for idx in top_equations.index:
@@ -154,7 +202,7 @@ filter_values = (
     .ravel()
 )
 
-# 10. Backtest Strategy
+# 11. Backtest Strategy
 # The spread itself represents the long/short daily return, so no additional
 # differencing is needed here.
 returns_series = test_targets
@@ -242,7 +290,7 @@ def calmar_ratio(returns, periods_per_year=252):
 # Evaluate performance after transaction costs
 sharpe_ratio = sharpe_ratio_func(strategy_returns)
 
-# 11. Plot Cumulative Returns in Percent with Background Signal Coloring
+# 12. Plot Cumulative Returns in Percent with Background Signal Coloring
 cumulative_strategy = np.cumprod(1 + strategy_returns) - 1
 cumulative_benchmark = np.cumprod(1 + benchmark_returns) - 1
 cumulative_spy = np.cumprod(1 + spy_benchmark_returns) - 1
@@ -281,7 +329,7 @@ ax.grid(True)
 plt.tight_layout()
 
 
-# 12. Output Return Table
+# 13. Output Return Table
 
 metrics_df = pd.DataFrame({
     "Cumulative Return (%)": [
@@ -326,6 +374,6 @@ print("\nStrategy Performance Summary:")
 print(metrics_df.round(2))
 plt.show()
 
-# 13. Print Equation
+# 14. Print Equation
 print("\nBest Discovered Equation:")
 print(model.sympy())
