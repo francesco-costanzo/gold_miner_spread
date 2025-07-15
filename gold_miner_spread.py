@@ -183,6 +183,7 @@ val_series = train_val_series[val_point:]
 lag_options = [6, 7, 8, 9, 10]
 maxsize_options = [7, 10, 15, 20, 30]
 popsize_options = [500, 1000]
+maxdepth_options = [5, 6, 7, 8]
 
 best_score = np.inf
 best_params = None
@@ -194,24 +195,30 @@ for l in lag_options:
     val_targets = val_series[val_features.index]
     for ms in maxsize_options:
         for ps in popsize_options:
-            grid_model = PySRRegressor(
-                niterations=100,
-                binary_operators=["+", "-", "*", "/", "^"],
-                unary_operators=["sin", "exp", "log"],
-                population_size=ps,
-                model_selection="best",
-                loss="L2DistLoss()",
-                maxsize=ms,
-                tournament_selection_n=20,
-                verbosity=0,
-                turbo = True
-            )
-            grid_model.fit(train_features.values, train_targets.values)
-            preds = grid_model.predict(val_features.values)
-            mse = np.mean((preds - val_targets.values) ** 2)
-            if mse < best_score:
-                best_score = mse
-                best_params = {"lags": l, "maxsize": ms, "population_size": ps}
+            for md in maxdepth_options:
+                grid_model = PySRRegressor(
+                    niterations=100,
+                    binary_operators=["+", "-", "*", "/"],
+                    unary_operators=["sin", "cos", "exp", "log"],
+                    population_size=ps,
+                    model_selection="best",
+                    loss="L2DistLoss()",
+                    maxsize=ms,
+                    maxdepth=md,
+                    tournament_selection_n=20,
+                    verbosity=0,
+                )
+                grid_model.fit(train_features.values, train_targets.values)
+                preds = grid_model.predict(val_features.values)
+                mse = np.mean((preds - val_targets.values) ** 2)
+                if mse < best_score:
+                    best_score = mse
+                    best_params = {
+                        "lags": l,
+                        "maxsize": ms,
+                        "population_size": ps,
+                        "maxdepth": md,
+                    }
 
 print(f"Selected params: {best_params}, Validation MSE: {best_score:.4f}")
 
@@ -230,6 +237,7 @@ model = PySRRegressor(
     model_selection="best",
     loss="L2DistLoss()",
     maxsize=best_params["maxsize"],
+    maxdepth=best_params["maxdepth"],
     tournament_selection_n=20,
     verbosity=1,
     turbo=True,
