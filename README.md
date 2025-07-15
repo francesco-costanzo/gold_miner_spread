@@ -52,3 +52,5 @@ iterations with a reduced maximum equation size of 6.
 Before fitting the final model, a simple grid search tests several lag
 lengths and PySR hyperparameters on a validation split. The combination with
 the lowest validation error is then used for training on the full dataset.
+If only one option is provided for each hyperparameter, the search is skipped
+and those values are used directly.
