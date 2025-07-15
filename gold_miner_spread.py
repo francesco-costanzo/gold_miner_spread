@@ -198,8 +198,8 @@ for l in lag_options:
             for md in maxdepth_options:
                 grid_model = PySRRegressor(
                     niterations=100,
-                    binary_operators=["+", "-", "*", "/"],
-                    unary_operators=["sin", "cos", "exp", "log"],
+                    binary_operators=["+", "-", "*", "/", "^"],
+                    unary_operators=["sin", "exp", "log"],
                     population_size=ps,
                     model_selection="best",
                     loss="L2DistLoss()",
