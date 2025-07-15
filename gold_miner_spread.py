@@ -232,7 +232,7 @@ model = PySRRegressor(
     maxsize=best_params["maxsize"],
     tournament_selection_n=20,
     verbosity=1,
-    turbo=True
+    turbo=True,
     parsimony=0.00001,
     early_stop_condition="f(loss, complexity) = (loss < 0.0002) && (complexity < 15)"
 )
