@@ -230,7 +230,11 @@ model.fit(train_features.values, train_targets.values)
 
 # 10. Predict using the 10 best models and apply correlation change filter
 top_equations = model.equations_.sort_values("loss").head(10)
-raw_preds = model.predict(test_features.values, index=top_equations.index).mean(axis=1)
+# Evaluate each of the top equations individually since ``predict`` only
+# accepts a single index at a time. Average the resulting predictions
+# to obtain the ensemble forecast.
+preds = [model.predict(test_features.values, index=i) for i in top_equations.index]
+raw_preds = np.column_stack(preds).mean(axis=1)
 
 # Align correlation filter to prediction index
 filter_values = (
