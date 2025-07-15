@@ -161,8 +161,8 @@ train_series = train_val_series[:val_point]
 val_series = train_val_series[val_point:]
 
 # 8. Hyperparameter Grid Search
-lag_options = [6, 7, 8, 9, 10]
-maxsize_options = [7, 10, 15, 20, 30]
+lag_options = [6, 8, 10]
+maxsize_options = [7, 10, 15, 30]
 population_size = 1000
 maxdepth_options = [5, 6, 7, 8]
 
@@ -180,7 +180,7 @@ for l in lag_options:
                 niterations=100,
                 binary_operators=["+", "-", "*", "/", "^"],
                 unary_operators=["sin", "exp", "log"],
-                population_size=population_size,
+                population_size=100,
                 model_selection="best",
                 loss="L2DistLoss()",
                 maxsize=ms,
