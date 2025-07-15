@@ -186,7 +186,8 @@ for l in lag_options:
                 maxsize=ms,
                 maxdepth=md,
                 tournament_selection_n=20,
-                verbosity=0,
+                verbosity=1,
+                turbo=True
             )
             grid_model.fit(train_features.values, train_targets.values)
             preds = grid_model.predict(val_features.values)
